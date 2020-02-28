@@ -2,10 +2,17 @@
 #define pinA 12 //d6
 #define pinB 13 //d7
 #define btn1 14 //d5
+
+#define del_btn1 350
+#define del_encoder 50
+
 int val;
 int encoder0Pos=0;
 int pinA_last;
 int n=LOW;
+
+unsigned long time_last_buton_pressed=0;
+unsigned long time_last_ancoder_active=0;
 
 volatile bool flag1=0;
 volatile bool flag2=0;
@@ -37,19 +44,21 @@ void setup() {
 
 void loop()
 {
-  if(flag1)
+  unsigned long ac_time=millis();
+
+  if(flag1 && ac_time-time_last_buton_pressed>del_btn1)
   {
     encoder0Pos=0;
      pinA_last=digitalRead(pinA);
      Serial.println(encoder0Pos);
 
      flag1=0;
-    delay(350);
+   time_last_buton_pressed=millis();
     interrupts();
   }
 
  // n=digitalRead(pinA);
-  if(flag2)
+  if(flag2 && ac_time-time_last_ancoder_active>del_encoder)
   {
    // n=flag2;
     //Serial.println("petla1");
@@ -63,7 +72,7 @@ void loop()
 
         encoder0Pos++;
       }
-      delay(50);
+      time_last_buton_pressed=millis();
       Serial.println(encoder0Pos);
        flag2=0;
       interrupts();
