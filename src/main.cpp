@@ -8,6 +8,7 @@ int pinA_last;
 int n=LOW;
 
 volatile bool flag1=0;
+volatile bool flag2=0;
 
 void ICACHE_RAM_ATTR isr1()
 {
@@ -15,6 +16,11 @@ noInterrupts();
 flag1=1;
 }
 
+void ICACHE_RAM_ATTR isr2()
+{
+noInterrupts();
+flag2=1;
+}
 
 void setup() {
   Serial.begin(115200);
@@ -22,8 +28,10 @@ void setup() {
   pinMode(pinA,INPUT);
   pinMode(pinB,INPUT);
   pinMode(btn1,INPUT_PULLUP);
-  pinA_last=digitalRead(pinA_last);
+  
+  //pinA_last=digitalRead(pinA_last);
   attachInterrupt(digitalPinToInterrupt(btn1),isr1,FALLING);
+  attachInterrupt(digitalPinToInterrupt(pinA),isr2,RISING);
    
 }
 
@@ -40,9 +48,10 @@ void loop()
     interrupts();
   }
 
-  n=digitalRead(pinA);
-  if((pinA_last==LOW)&& n==HIGH)
+ // n=digitalRead(pinA);
+  if(flag2)
   {
+   // n=flag2;
     //Serial.println("petla1");
       if(digitalRead(pinB)==LOW)
       {
@@ -56,7 +65,10 @@ void loop()
       }
       delay(50);
       Serial.println(encoder0Pos);
+       flag2=0;
+      interrupts();
   }
-  pinA_last=n;
+  //pinA_last=n;
+ 
 
 }
