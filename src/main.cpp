@@ -7,7 +7,7 @@
 #define OLED_ADDR   0x3C
 #define btn1 0 //d3
 #define btn2 2 //d4
-#define btn3 14 //d5
+#define btn3 14 //d5 do d8
 
 #define del_btn1 350
 #define del_encoder 250
@@ -31,6 +31,7 @@ volatile bool flag1=0;
 volatile bool flag2=0;
 volatile bool flag4=0; //aktualizacja wyswietlacza
 bool flag_submenu=0;
+bool flag_horizontal_slider1=0; //for incrementation when i n submenu 
 int counter_submenu=1;
 int submenu_slid_pos=0; //slider for submenu value max allowed 119
 void ICACHE_RAM_ATTR isr1()
@@ -57,6 +58,7 @@ int menu_slider_calc(int *rows,int *vert_space);
 void menu_row( int lp,const char txt[],int x_start,int *actual_pos);
 void submenu_type1(int *select,int *slider_pos);
 void submenu_display(int option);
+void submenu_type_def(int *select);
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 Adafruit_SSD1306 OLED(-1);
@@ -103,9 +105,12 @@ void loop()
     counter1=1;
     }
      Serial.println(encoder0Pos);
-  }else
+  }else if(flag_horizontal_slider1 && flag_submenu)
   {
-    counter_submenu--;
+    submenu_slid_pos-=8;
+  }else{
+        counter_submenu--;
+
   }
   
      flag1=0;
@@ -113,21 +118,47 @@ void loop()
     interrupts();
   }
 
-
+/////////////////////////////////////////////////////////////////////////////////////middle button
    if(flag2 && ac_time-time_last_buton2_pressed>del_btn1)
   {
     flag4=1;
 
     //encoder0Pos=0;
    // counter1=1;
-    flag_submenu=!flag_submenu;
+   if(!flag_submenu) //when flag sumbmenu 0
+   {
+    flag_submenu=1; //to get into submenu
+    Serial.println("flag submenu");
+    Serial.println(flag_submenu);
+   }else//ten else musi tu byc bo bez tego po wlaczeniu submenu od razu  by z miego wyszedl
+  //if(flag_submenu)
+  {
+    Serial.println("inside");
+    switch (counter_submenu)
+    {
+      case 2:
+        flag_submenu=0;
+        flag_horizontal_slider1=0;//get back to operate on vertical slider values
+      break;
+
+      case 3:
+        flag_horizontal_slider1=!flag_horizontal_slider1; //bez tego odwracania wartosci by sie nie dal owysjc
+      break;
+
+      default: //when 1 thats exit
+      flag_submenu=0;
+      flag_horizontal_slider1=0;//get back to operate on vertical slider values
+    }
+  }
+     
+
    // Serial.println(encoder0Pos);
 
      flag2=0;
    time_last_buton2_pressed=millis();
     interrupts();
   }
-
+/////////////////////////////////////////////////////////////////////////////////////
    if(flag3 && ac_time-time_last_buton3_pressed>del_btn1)
   {
     flag4=1;
@@ -141,9 +172,12 @@ void loop()
      counter1=8;
      }
      Serial.println(encoder0Pos);
-  }else
+  }else if(flag_horizontal_slider1 && flag_submenu)
   {
-    counter_submenu++;
+    submenu_slid_pos+=8;
+  }else{
+        counter_submenu++;
+
   }
   
      flag3=0;
@@ -234,7 +268,8 @@ void submenu_display(int option)
     submenu_type1(&counter_submenu,&submenu_slid_pos);
     break;
     default:
-    Serial.println("err occured i nsubmenu");
+   // Serial.println("err occured i nsubmenu");
+    submenu_type_def(&counter_submenu);
   }
   
 }
@@ -244,48 +279,68 @@ void submenu_type1(int *select,int *slider_pos)
   if(*select>3) *select=1;
   if(*select<1) *select=3;
 
-
+  //protect value of slider from exceeding limit
+  *slider_pos=(*slider_pos>120) ? 120:*slider_pos;
+  *slider_pos=(*slider_pos<0) ? 0 :*slider_pos;
   OLED.clearDisplay();
 
   OLED.setCursor(0,10);
   OLED.println("eg vert slider 1");
 
-  OLED.drawLine(0,25,127,25,WHITE);
+  OLED.drawLine(0,40,127,40,WHITE);
   switch(*select)
   {
   if(*select==1)
 
   
-   case 2:
-  
-    OLED.fillRect(19,39,30,9,WHITE);
-    OLED.setTextColor(BLACK);
-    OLED.setCursor(20,40);
-    OLED.println("exit");
-    OLED.setTextColor(WHITE);
-    OLED.setCursor(80,40);
-    OLED.println("OK");
-    break;
-  case 3:
-   
-    OLED.setCursor(20,40);
-    OLED.println("exit");
-     OLED.fillRect(79,39,30,9,WHITE);
-    OLED.setTextColor(BLACK);
-    OLED.setCursor(80,40);
-    OLED.println("OK");
-    OLED.setTextColor(WHITE);
-    break;
-
-  default: //jka jeden
-  OLED.drawRect(*slider_pos,24,8,3,WHITE);
-  OLED.setCursor(20,40);
+   case 3: //slider 
+   if(flag_horizontal_slider1) OLED.drawRect(*slider_pos+3,37,2,7,WHITE);
+   OLED.drawRect(*slider_pos,39,8,3,WHITE);
+  OLED.setCursor(20,25);
   OLED.println("exit");
-  OLED.setCursor(80,40);
+  OLED.setCursor(80,25);
   OLED.println("OK");
+   
+    break;
+  case 2: //ok btn
+   OLED.drawRect(*slider_pos,39,8,3,WHITE);
+    OLED.setCursor(20,25);
+    OLED.println("exit");
+     OLED.fillRect(79,24,30,9,WHITE);
+    OLED.setTextColor(BLACK);
+    OLED.setCursor(80,25);
+    OLED.println("OK");
+    OLED.setTextColor(WHITE);
+    break;
 
+  default: //jka jeden exit musi byc jako default
+ OLED.drawRect(*slider_pos,39,8,3,WHITE);
+   OLED.fillRect(19,24,30,9,WHITE);
+    OLED.setTextColor(BLACK);
+    OLED.setCursor(20,25);
+    OLED.println("exit");
+    OLED.setTextColor(WHITE);
+    OLED.setCursor(80,25);
+    OLED.println("OK");
   
   }
 
   OLED.display(); //output 'display buffer' to screen  
+}
+
+void submenu_type_def(int *select){
+  OLED.clearDisplay();
+
+  OLED.setCursor(0,10);
+  OLED.println("blank menu");
+
+  if(*select>1) *select=1;
+  if(*select<1) *select=1;
+    OLED.fillRect(19,24,30,9,WHITE);
+    OLED.setTextColor(BLACK);
+    OLED.setCursor(20,25);
+    OLED.println("exit");
+    OLED.setTextColor(WHITE);
+
+    OLED.display(); //output 'display buffer' to screen  
 }
