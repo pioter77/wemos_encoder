@@ -30,7 +30,9 @@ volatile bool flag3=0;
 volatile bool flag1=0;
 volatile bool flag2=0;
 volatile bool flag4=0; //aktualizacja wyswietlacza
-
+bool flag_submenu=0;
+int counter_submenu=1;
+int submenu_slid_pos=0; //slider for submenu value max allowed 119
 void ICACHE_RAM_ATTR isr1()
 {
 noInterrupts();
@@ -49,9 +51,13 @@ noInterrupts();
 flag3=1;
 }
 
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 void menu_display();
 int menu_slider_calc(int *rows,int *vert_space);
 void menu_row( int lp,const char txt[],int x_start,int *actual_pos);
+void submenu_type1(int *select,int *slider_pos);
+void submenu_display(int option);
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 Adafruit_SSD1306 OLED(-1);
 
@@ -88,7 +94,8 @@ void loop()
   if(flag1 && ac_time-time_last_buton1_pressed>del_btn1)
   {
     flag4=1;
-
+  if(!flag_submenu)
+  {
     encoder0Pos-=8;
     counter1--;
     if(encoder0Pos<0) 
@@ -96,7 +103,11 @@ void loop()
     counter1=1;
     }
      Serial.println(encoder0Pos);
-
+  }else
+  {
+    counter_submenu--;
+  }
+  
      flag1=0;
    time_last_buton1_pressed=millis();
     interrupts();
@@ -107,9 +118,10 @@ void loop()
   {
     flag4=1;
 
-    encoder0Pos=0;
-    counter1=1;
-    Serial.println(encoder0Pos);
+    //encoder0Pos=0;
+   // counter1=1;
+    flag_submenu=!flag_submenu;
+   // Serial.println(encoder0Pos);
 
      flag2=0;
    time_last_buton2_pressed=millis();
@@ -120,6 +132,8 @@ void loop()
   {
     flag4=1;
 
+  if(!flag_submenu)
+  {
     encoder0Pos+=8;
     counter1++;
      if(encoder0Pos>56)//jakby zmieniac ilosc plansz to to by ptrzeba bylo razy 2 dla 2giej planszy?
@@ -127,7 +141,11 @@ void loop()
      counter1=8;
      }
      Serial.println(encoder0Pos);
-
+  }else
+  {
+    counter_submenu++;
+  }
+  
      flag3=0;
    time_last_buton3_pressed=millis();
     interrupts();
@@ -137,7 +155,12 @@ void loop()
   
   if(flag4)
   {
-  menu_display();
+    if(!flag_submenu)
+    {
+      menu_display();
+    }else{
+      submenu_display(counter1);
+    }
  flag4=0;
  //interrupts();
 }
@@ -166,9 +189,6 @@ void menu_row( int lp,const char txt[],int x_start,int *actual_pos)
     OLED.println(txt);
   }
  
- // OLED.println("tescik");
-  //Serial.println("fcja");
-  //Serial.println(*txt);
 }
 
 void menu_display()
@@ -202,4 +222,70 @@ menu_row(7,"opcja7",0,&encoder0Pos);
 
 
  OLED.display(); //output 'display buffer' to screen  
+}
+void submenu_display(int option)
+{
+  switch (option)
+  {
+    case 1:
+    submenu_type1(&counter_submenu,&submenu_slid_pos);
+    break;
+    case 2:
+    submenu_type1(&counter_submenu,&submenu_slid_pos);
+    break;
+    default:
+    Serial.println("err occured i nsubmenu");
+  }
+  
+}
+
+void submenu_type1(int *select,int *slider_pos)
+{
+  if(*select>3) *select=1;
+  if(*select<1) *select=3;
+
+
+  OLED.clearDisplay();
+
+  OLED.setCursor(0,10);
+  OLED.println("eg vert slider 1");
+
+  OLED.drawLine(0,25,127,25,WHITE);
+  switch(*select)
+  {
+  if(*select==1)
+
+  
+   case 2:
+  
+    OLED.fillRect(19,39,30,9,WHITE);
+    OLED.setTextColor(BLACK);
+    OLED.setCursor(20,40);
+    OLED.println("exit");
+    OLED.setTextColor(WHITE);
+    OLED.setCursor(80,40);
+    OLED.println("OK");
+    break;
+  case 3:
+   
+    OLED.setCursor(20,40);
+    OLED.println("exit");
+     OLED.fillRect(79,39,30,9,WHITE);
+    OLED.setTextColor(BLACK);
+    OLED.setCursor(80,40);
+    OLED.println("OK");
+    OLED.setTextColor(WHITE);
+    break;
+
+  default: //jka jeden
+  OLED.drawRect(*slider_pos,24,8,3,WHITE);
+  OLED.setCursor(20,40);
+  OLED.println("exit");
+  OLED.setCursor(80,40);
+  OLED.println("OK");
+
+  
+  }
+
+  OLED.display(); //output 'display buffer' to screen  
 }
